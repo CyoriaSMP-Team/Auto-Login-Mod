@@ -9,12 +9,18 @@ import com.google.gson.reflect.TypeToken;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ServerConfig {
     private static final File CONFIG_FILE = new File("config/alm-servers.json");
-    private static String MASTER_KEY = "AutoLoginModSecretKey2026"; // Fallback key
+    private static final File DEVICE_KEY_FILE = new File("config/alm-device.key");
+    private static final String LEGACY_FALLBACK_KEY = "AutoLoginModSecretKey2026";
+    private static String MASTER_KEY = LEGACY_FALLBACK_KEY;
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     
     // Map<ServerIP, ServerEntry>
@@ -34,15 +40,41 @@ public class ServerConfig {
     // Security
     private static String masterPasswordHash = "";
     private static String masterPasswordSalt = "";
+    private static String rememberedMasterKey = "";
+    private static String rememberedMasterKeySalt = "";
+    private static boolean rememberUnlockOnDevice = true;
     private static boolean isUnlocked = false;
     private static boolean sessionLoggedIn = false;
+    private static boolean authAttemptPending = false;
+    private static long lastAuthAttemptTime = 0;
+    private static final long AUTH_ATTEMPT_COOLDOWN = 5000;
 
     public static boolean isSessionLoggedIn() {
         return sessionLoggedIn;
     }
 
-    public static void setSessionLoggedIn(boolean loggedIn) {
+    public static synchronized void setSessionLoggedIn(boolean loggedIn) {
         sessionLoggedIn = loggedIn;
+        if (loggedIn) authAttemptPending = false;
+    }
+
+    public static synchronized void resetSession() {
+        sessionLoggedIn = false;
+        authAttemptPending = false;
+        lastAuthAttemptTime = 0;
+    }
+
+    public static synchronized boolean beginAuthAttempt() {
+        if (sessionLoggedIn || authAttemptPending) return false;
+        long now = System.currentTimeMillis();
+        if (now - lastAuthAttemptTime < AUTH_ATTEMPT_COOLDOWN) return false;
+        authAttemptPending = true;
+        lastAuthAttemptTime = now;
+        return true;
+    }
+
+    public static synchronized void finishAuthAttempt() {
+        authAttemptPending = false;
     }
 
     
@@ -84,7 +116,11 @@ public class ServerConfig {
                 if (root.has("maxDelay")) maxDelay = root.get("maxDelay").getAsInt();
                 if (root.has("masterPasswordHash")) masterPasswordHash = root.get("masterPasswordHash").getAsString();
                 if (root.has("masterPasswordSalt")) masterPasswordSalt = root.get("masterPasswordSalt").getAsString();
+                if (root.has("rememberedMasterKey")) rememberedMasterKey = root.get("rememberedMasterKey").getAsString();
+                if (root.has("rememberedMasterKeySalt")) rememberedMasterKeySalt = root.get("rememberedMasterKeySalt").getAsString();
+                if (root.has("rememberUnlockOnDevice")) rememberUnlockOnDevice = root.get("rememberUnlockOnDevice").getAsBoolean();
             }
+            initializeUnlockState();
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -107,6 +143,9 @@ public class ServerConfig {
             root.addProperty("maxDelay", maxDelay);
             root.addProperty("masterPasswordHash", masterPasswordHash);
             root.addProperty("masterPasswordSalt", masterPasswordSalt);
+            root.addProperty("rememberedMasterKey", rememberedMasterKey);
+            root.addProperty("rememberedMasterKeySalt", rememberedMasterKeySalt);
+            root.addProperty("rememberUnlockOnDevice", rememberUnlockOnDevice);
             
             CONFIG_FILE.getParentFile().mkdirs();
             try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
@@ -143,6 +182,7 @@ public class ServerConfig {
             MASTER_KEY = password;
             isUnlocked = true;
             updateActivity();
+            rememberCurrentMasterKey();
             save();
             return true;
         } catch (Exception e) {
@@ -157,6 +197,8 @@ public class ServerConfig {
                 MASTER_KEY = password;
                 isUnlocked = true;
                 updateActivity();
+                rememberCurrentMasterKey();
+                save();
                 return true;
             }
         } catch (Exception e) {}
@@ -168,8 +210,9 @@ public class ServerConfig {
     }
 
     public static boolean isLocked() {
-        if (!isUnlocked) return !masterPasswordHash.isEmpty();
-        if (System.currentTimeMillis() - lastActivityTime > AUTO_LOCK_TIMEOUT) {
+        if (!hasMasterPassword()) return false;
+        if (!isUnlocked) return true;
+        if (!rememberUnlockOnDevice && System.currentTimeMillis() - lastActivityTime > AUTO_LOCK_TIMEOUT) {
             lock();
             return true;
         }
@@ -181,16 +224,104 @@ public class ServerConfig {
     }
 
     public static void lock() {
-        MASTER_KEY = "AutoLoginModSecretKey2026";
+        MASTER_KEY = LEGACY_FALLBACK_KEY;
         isUnlocked = false;
     }
 
+    public static boolean isRememberUnlockOnDevice() {
+        return rememberUnlockOnDevice;
+    }
+
+    public static void setRememberUnlockOnDevice(boolean remember) {
+        rememberUnlockOnDevice = remember;
+        if (!remember) {
+            rememberedMasterKey = "";
+            rememberedMasterKeySalt = "";
+        } else if (isUnlocked && hasMasterPassword()) {
+            rememberCurrentMasterKey();
+        }
+        save();
+    }
+
+    private static void initializeUnlockState() {
+        if (!hasMasterPassword()) {
+            MASTER_KEY = LEGACY_FALLBACK_KEY;
+            isUnlocked = true;
+            updateActivity();
+            return;
+        }
+
+        isUnlocked = false;
+        if (!rememberUnlockOnDevice || rememberedMasterKey.isEmpty() || rememberedMasterKeySalt.isEmpty()) {
+            return;
+        }
+
+        try {
+            String password = EncryptionUtil.decrypt(
+                    rememberedMasterKey,
+                    getDeviceKey(),
+                    rememberedMasterKeySalt
+            );
+            String hash = EncryptionUtil.hashPassword(password, masterPasswordSalt);
+            if (hash.equals(masterPasswordHash)) {
+                MASTER_KEY = password;
+                isUnlocked = true;
+                updateActivity();
+            }
+        } catch (Exception ignored) {
+            // Device key changed or remembered data is stale; require one manual unlock.
+        }
+    }
+
+    private static void rememberCurrentMasterKey() {
+        if (!rememberUnlockOnDevice || !hasMasterPassword() || !isUnlocked) return;
+        try {
+            rememberedMasterKeySalt = EncryptionUtil.generateSalt();
+            rememberedMasterKey = EncryptionUtil.encrypt(
+                    MASTER_KEY,
+                    getDeviceKey(),
+                    rememberedMasterKeySalt
+            );
+        } catch (Exception e) {
+            rememberedMasterKey = "";
+            rememberedMasterKeySalt = "";
+        }
+    }
+
+    private static String getDeviceKey() throws Exception {
+        CONFIG_FILE.getParentFile().mkdirs();
+        if (DEVICE_KEY_FILE.exists()) {
+            return Files.readString(DEVICE_KEY_FILE.toPath(), StandardCharsets.UTF_8).trim();
+        }
+
+        String key = EncryptionUtil.generateSalt() + EncryptionUtil.generateSalt();
+        Files.writeString(
+                DEVICE_KEY_FILE.toPath(),
+                key,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE
+        );
+        try {
+            Files.setPosixFilePermissions(
+                    DEVICE_KEY_FILE.toPath(),
+                    PosixFilePermissions.fromString("rw-------")
+            );
+        } catch (UnsupportedOperationException ignored) {
+            // Windows and some filesystems do not expose POSIX permissions.
+        }
+        return key;
+    }
+
     public static int getRandomDelay() {
-        // Gaussian distribution: mean 1200ms, sigma 300ms
-        // Clamped between 600ms and 3000ms
-        java.util.Random r = new java.util.Random();
-        double val = r.nextGaussian() * 300 + 1200;
-        return (int) Math.max(600, Math.min(3000, val));
+        int min = Math.max(0, Math.min(minDelay, maxDelay));
+        int max = Math.max(min, Math.max(minDelay, maxDelay));
+        if (min == max) return min;
+
+        double mean = (min + max) / 2.0;
+        double sigma = Math.max(1.0, (max - min) / 6.0);
+        double value = new java.util.Random().nextGaussian() * sigma + mean;
+        return (int) Math.max(min, Math.min(max, Math.round(value)));
     }
 
     public static boolean isSmartModeEnabled() { return smartModeEnabled; }
@@ -203,6 +334,9 @@ public class ServerConfig {
     private static void createDefaultConfig() throws Exception {
         globalSalt = EncryptionUtil.generateSalt();
         servers = new HashMap<>();
+        MASTER_KEY = LEGACY_FALLBACK_KEY;
+        isUnlocked = true;
+        updateActivity();
         save();
     }
     

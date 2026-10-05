@@ -7,16 +7,15 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 public class ChatMessageHandler {
-    private static long lastResponseTime = 0;
-    private static final long COOLDOWN = 5000; // 5 seconds cooldown
-    
     public static void register() {
         ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
             Minecraft client = Minecraft.getInstance();
             if (client.player == null) return;
             
             String text = message.getString();
-            if (ServerConfig.isLocked() || !ServerConfig.isSmartModeEnabled()) return;
+            if (ServerConfig.isLocked()
+                    || !ServerConfig.isSmartModeEnabled()
+                    || !ServerConfig.isAutoTypeEnabled()) return;
             
             AuthDetector.AuthType type = AuthDetector.detect(text);
             
@@ -27,16 +26,10 @@ public class ChatMessageHandler {
 
             if (ServerConfig.isSessionLoggedIn()) return;
             
-            // Prevention of spam
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastResponseTime < COOLDOWN) return;
-
             if (type == AuthDetector.AuthType.REGISTER) {
-                lastResponseTime = currentTime;
-                handleAutoResponse(client, true);
+                if (ServerConfig.beginAuthAttempt()) handleAutoResponse(client, true);
             } else if (type == AuthDetector.AuthType.LOGIN) {
-                lastResponseTime = currentTime;
-                handleAutoResponse(client, false);
+                if (ServerConfig.beginAuthAttempt()) handleAutoResponse(client, false);
             }
         });
     }
@@ -52,10 +45,14 @@ public class ChatMessageHandler {
         } else if (ServerConfig.hasGlobalPassword()) {
             password = ServerConfig.getGlobalPassword();
         } else {
+            ServerConfig.finishAuthAttempt();
             return;
         }
         
-        if (password == null || password.isEmpty()) return;
+        if (password == null || password.isEmpty()) {
+            ServerConfig.finishAuthAttempt();
+            return;
+        }
         
         final boolean finalIsRegister = forceRegister;
         final String finalPassword = password;
@@ -65,16 +62,21 @@ public class ChatMessageHandler {
             try {
                 Thread.sleep(delay);
                 client.execute(() -> {
-                    if (client.player != null) {
-                        String cmd = finalIsRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
-                        client.player.connection.sendCommand(cmd);
-                        client.player.sendSystemMessage(
-                            Component.literal("§6[Auto-Login] §aDetected and sent §e/" + (finalIsRegister ? "register" : "login") + " §8(Delay: " + delay + "ms)")
-                        );
+                    try {
+                        if (client.player != null) {
+                            String cmd = finalIsRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
+                            client.player.connection.sendCommand(cmd);
+                            client.player.sendSystemMessage(
+                                Component.literal("§6[Auto-Login] §aDetected and sent §e/" + (finalIsRegister ? "register" : "login") + " §8(Delay: " + delay + "ms)")
+                            );
+                        }
+                    } finally {
+                        ServerConfig.finishAuthAttempt();
                     }
                 });
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Thread.currentThread().interrupt();
+                ServerConfig.finishAuthAttempt();
             }
         }).start();
     }

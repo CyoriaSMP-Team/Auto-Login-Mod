@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "auto-login-mod",
-	"version": "2.0.0",
+	"version": "2.1.0",
 	"name": "Auto Login Mod (Pro Edition)",
 	"description": "The ultimate Secure Client Utility for automatic server authentication. FEATURES: Custom Triggers, Smart Spam Protection (Cooldown System), PBKDF2+AES-GCM Encryption, Gaussian Stealth Delay, and Secure Master Password. Fully compatible with Thai and International servers.",
 	"authors": [
@@ -9,13 +9,13 @@
 		"namnarak"
 	],
 	"contact": {
-		"homepage": "https://github.com/Cytech-Team",
+		"homepage": "https://github.com/CyoriaSMP-Team",
 		"sources": "https://github.com/Cytech-Team/Auto-Login-Mod",
 		"issues": "https://github.com/Cytech-Team/Auto-Login-Mod/issues"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/auto-login-mod/icon.png",
-	"environment": "*",
+	"environment": "client",
 	"entrypoints": {
 		"client": [
 			"cloud.sect.alm.AutoLoginModClient"

@@ -9,23 +9,19 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 
 public class ScreenHandler {
-    private static long lastResponseTime = 0;
-    private static final long COOLDOWN = 5000;
-
     public static void register() {
         ScreenEvents.AFTER_INIT.register((client, screen, scaledWidth, scaledHeight) -> {
-            if (ServerConfig.isLocked() || !ServerConfig.isSmartModeEnabled() || ServerConfig.isSessionLoggedIn()) return;
-            
-            long currentTime = System.currentTimeMillis();
-            if (currentTime - lastResponseTime < COOLDOWN) return;
+            if (ServerConfig.isLocked()
+                    || !ServerConfig.isSmartModeEnabled()
+                    || !ServerConfig.isAutoTypeEnabled()
+                    || ServerConfig.isSessionLoggedIn()) return;
 
             String title = screen.getTitle().getString();
             AuthDetector.AuthType type = AuthDetector.detect(title);
             
             if (type == AuthDetector.AuthType.LOGIN || type == AuthDetector.AuthType.REGISTER) {
-                lastResponseTime = currentTime;
                 boolean isRegister = (type == AuthDetector.AuthType.REGISTER);
-                handleScreenAuth(client, isRegister);
+                if (ServerConfig.beginAuthAttempt()) handleScreenAuth(client, isRegister);
             }
         });
     }
@@ -41,10 +37,14 @@ public class ScreenHandler {
         } else if (ServerConfig.hasGlobalPassword()) {
             password = ServerConfig.getGlobalPassword();
         } else {
+            ServerConfig.finishAuthAttempt();
             return;
         }
         
-        if (password == null || password.isEmpty()) return;
+        if (password == null || password.isEmpty()) {
+            ServerConfig.finishAuthAttempt();
+            return;
+        }
 
         final String finalPassword = password;
         final int delay = ServerConfig.getRandomDelay();
@@ -52,16 +52,21 @@ public class ScreenHandler {
             try {
                 Thread.sleep(delay);
                 client.execute(() -> {
-                    if (client.player != null) {
-                        String cmd = isRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
-                        client.player.connection.sendCommand(cmd);
-                        client.player.sendSystemMessage(
-                            Component.literal("§6[Auto-Login] §aDetected GUI and sent §e/" + (isRegister ? "register" : "login") + " §8(Delay: " + delay + "ms)")
-                        );
+                    try {
+                        if (client.player != null) {
+                            String cmd = isRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
+                            client.player.connection.sendCommand(cmd);
+                            client.player.sendSystemMessage(
+                                Component.literal("§6[Auto-Login] §aDetected GUI and sent §e/" + (isRegister ? "register" : "login") + " §8(Delay: " + delay + "ms)")
+                            );
+                        }
+                    } finally {
+                        ServerConfig.finishAuthAttempt();
                     }
                 });
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Thread.currentThread().interrupt();
+                ServerConfig.finishAuthAttempt();
             }
         }).start();
     }

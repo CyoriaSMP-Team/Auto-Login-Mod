@@ -10,7 +10,7 @@ public class PlayerJoinHandler {
     
     public static void register() {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            ServerConfig.setSessionLoggedIn(false);
+            ServerConfig.resetSession();
             client.execute(() -> {
                 if (client.player == null) return;
                 
@@ -42,15 +42,23 @@ public class PlayerJoinHandler {
                     return;
                 }
                 
-                // Check if auto-type is enabled
+                // Auto login is prompt-driven by default. This avoids racing the auth plugin
+                // and prevents JOIN + chat/GUI detectors from sending duplicate commands.
                 if (!ServerConfig.isAutoTypeEnabled()) {
                     client.player.sendSystemMessage(
-                        Component.literal(PREFIX + "§8Auto-type is disabled. Press §fF9 §8to login.")
+                        Component.literal(PREFIX + "§8Auto-login is disabled. Press §fF9 §8to open settings.")
+                    );
+                    return;
+                }
+
+                if (ServerConfig.isSmartModeEnabled()) {
+                    client.player.sendSystemMessage(
+                        Component.literal(PREFIX + "§aReady. §7Waiting for the server login prompt...")
                     );
                     return;
                 }
                 
-                // Auto-login sequence
+                // Fallback mode for servers that never send a detectable auth prompt.
                 String password;
                 boolean isRegisterCommand;
                 
@@ -64,6 +72,8 @@ public class PlayerJoinHandler {
                 
                 if (password.isEmpty()) return;
                 
+                if (!ServerConfig.beginAuthAttempt()) return;
+
                 final int delay = ServerConfig.getRandomDelay();
                 client.player.sendSystemMessage(
                     Component.literal(PREFIX + "§aAuto-typing login in §e" + delay + "ms§a...")
@@ -76,23 +86,28 @@ public class PlayerJoinHandler {
                     try {
                         Thread.sleep(delay);
                         client.execute(() -> {
-                            if (client.player != null) {
-                                String cmd = finalIsRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
-                                client.player.connection.sendCommand(cmd);
-                                client.player.sendSystemMessage(
-                                    Component.literal(PREFIX + "§aSuccessfully auto-sent §e/" + (finalIsRegister ? "register" : "login"))
-                                );
+                            try {
+                                if (client.player != null) {
+                                    String cmd = finalIsRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
+                                    client.player.connection.sendCommand(cmd);
+                                    client.player.sendSystemMessage(
+                                        Component.literal(PREFIX + "§aFallback auto-sent §e/" + (finalIsRegister ? "register" : "login"))
+                                    );
+                                }
+                            } finally {
+                                ServerConfig.finishAuthAttempt();
                             }
                         });
                     } catch (InterruptedException e) {
-                        e.printStackTrace();
+                        Thread.currentThread().interrupt();
+                        ServerConfig.finishAuthAttempt();
                     }
                 }).start();
             });
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-            ServerConfig.setSessionLoggedIn(false);
+            ServerConfig.resetSession();
             ServerConfig.updateActivity();
         });
     }

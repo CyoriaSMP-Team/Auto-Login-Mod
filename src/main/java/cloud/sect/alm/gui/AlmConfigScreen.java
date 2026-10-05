@@ -27,6 +27,7 @@ public class AlmConfigScreen extends Screen {
     
     private String statusMessage = "";
     private int messageTimer = 0;
+    private boolean forceSecurityScreen = false;
 
     public AlmConfigScreen(Screen parent) {
         super(Component.literal("§6§lAuto-Login Mod §r§7- §fAdvanced Settings"));
@@ -39,7 +40,7 @@ public class AlmConfigScreen extends Screen {
         int centerX = this.width / 2;
         int centerY = this.height / 2;
 
-        if (ServerConfig.isLocked() || !ServerConfig.hasMasterPassword()) {
+        if (ServerConfig.isLocked() || forceSecurityScreen) {
             initSecurityScreen(centerX, centerY);
         } else {
             initAdvancedUI(centerX, centerY);
@@ -90,10 +91,15 @@ public class AlmConfigScreen extends Screen {
             String pass = this.serverPassField.getValue();
             if (pass.isEmpty()) return;
             if (ServerConfig.hasMasterPassword()) {
-                if (ServerConfig.unlock(pass)) this.init();
-                else showStatus("§cInvalid Master Password!", 60);
+                if (ServerConfig.unlock(pass)) {
+                    forceSecurityScreen = false;
+                    this.init();
+                } else showStatus("§cInvalid Master Password!", 60);
             } else {
-                if (ServerConfig.setMasterPassword(pass)) this.init();
+                if (ServerConfig.setMasterPassword(pass)) {
+                    forceSecurityScreen = false;
+                    this.init();
+                }
             }
         }).bounds(centerX - 100, centerY + 20, 200, 20).build());
     }
@@ -188,8 +194,31 @@ public class AlmConfigScreen extends Screen {
         }
 
         // --- Bottom Controls ---
-        this.addRenderableWidget(Button.builder(Component.literal("§c✖ Close & Save Settings"), b -> this.onClose())
-            .bounds(centerX - 80, this.height - 35, 160, 20).build());
+        String securityText;
+        if (!ServerConfig.hasMasterPassword()) {
+            securityText = "§eSet Master Password";
+        } else {
+            securityText = "§bRemember Unlock: " + (ServerConfig.isRememberUnlockOnDevice() ? "§aON" : "§cOFF");
+        }
+
+        this.addRenderableWidget(Button.builder(Component.literal(securityText), b -> {
+            if (!ServerConfig.hasMasterPassword()) {
+                forceSecurityScreen = true;
+                this.init();
+            } else {
+                ServerConfig.setRememberUnlockOnDevice(!ServerConfig.isRememberUnlockOnDevice());
+                showStatus(
+                    ServerConfig.isRememberUnlockOnDevice()
+                        ? "§aThis device will unlock automatically."
+                        : "§eRemembered unlock disabled.",
+                    60
+                );
+                this.init();
+            }
+        }).bounds(centerX - 145, this.height - 35, 140, 20).build());
+
+        this.addRenderableWidget(Button.builder(Component.literal("§c✖ Close & Save"), b -> this.onClose())
+            .bounds(centerX + 5, this.height - 35, 140, 20).build());
     }
 
     private void showStatus(String msg, int ticks) {
@@ -206,7 +235,7 @@ public class AlmConfigScreen extends Screen {
         int centerX = this.width / 2;
         context.drawCenteredString(this.font, this.title, centerX, 15, 0xFFAA00);
         
-        if (!ServerConfig.isLocked() && ServerConfig.hasMasterPassword()) {
+        if (!ServerConfig.isLocked() && !forceSecurityScreen) {
             int leftX = centerX - 145;
             int rightX = centerX + 5;
             int startY = 40;

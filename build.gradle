@@ -3,7 +3,7 @@ plugins {
 	id 'maven-publish'
 }
 
-version = "2.0.0"
+version = "2.1.0"
 group = "cloud.sect.alm"
 
 base {
@@ -40,8 +40,8 @@ jar {
 	}
 }
 
-// Disable remapping to stay with Mojang mappings (Official names)
+// Fabric Loom remaps the development namespace into a production-ready mod JAR.
 remapJar {
-	enabled = false
+	enabled = true
 }
 

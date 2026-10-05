@@ -1,37 +1,60 @@
-# 🛡️ Auto-Login Mod (Pro Edition)
+# 🛡️ Auto-Login Mod
 
-![Mod Icon](src/main/resources/assets/auto-login-mod/icon.png)
+A client-side Fabric utility that automatically authenticates you on Minecraft servers using `/login` or `/register`.
 
-The ultimate client-side utility for Minecraft players who want a seamless and secure login experience on servers with AuthMe or similar systems.
+## How it works
 
-## 🚀 Key Features
+1. Configure a global password or a per-server password once.
+2. Join the server normally.
+3. Auto-Login waits for the server's authentication prompt.
+4. It detects whether the server asks for `/login` or `/register`.
+5. After the configured delay, the command is sent automatically.
+6. Duplicate chat/GUI detections are coordinated so one authentication attempt is sent at a time.
 
-*   **⚡ Smart Auto-Login:** Automatically detects `/login` or `/register` prompts and submits your credentials.
-*   **🛠️ Custom Triggers:** Add your own keywords to trigger auto-login via `/alm trigger add <word>`.
-*   **🛡️ Pro Spam Protection:** Integrated cooldown system prevents chat spam even on slow servers.
-*   **🔒 Military-Grade Security:**
-    *   PBKDF2 with 300,000 iterations for key derivation.
-    *   AES-GCM (256-bit) encryption for stored passwords.
-    *   Secure Master Password lock (F9 to unlock).
-*   **⏳ Gaussian Stealth Delay:** Mimics human typing speed with randomized delays (800ms - 2000ms).
-*   **🌐 Full Thai Support:** Works perfectly with Thai servers and custom Thai login messages.
+If Smart Mode is disabled, Auto-Login falls back to the older join-time login behavior for servers that do not send a detectable prompt.
 
-## 🎮 Commands
+## Security
+
+- Stored credentials use PBKDF2-HMAC-SHA256 key derivation and AES-GCM encryption.
+- A Master Password is **optional**.
+- If you enable a Master Password, a successful unlock is remembered on that device by default, so restarting Minecraft does not turn Auto Login back into a manual login step.
+- The remembered unlock is wrapped with a random per-device key stored locally in `config/alm-device.key`.
+- You can disable **Remember Unlock** in the settings screen if you prefer to enter the Master Password each session.
+
+> Device unlock is a convenience feature. Anyone who can fully read your Minecraft config directory may be able to access both the encrypted credentials and the local device key.
+
+## Features
+
+- Prompt-driven automatic `/login` and `/register`
+- Per-server credentials
+- Optional global credential
+- Custom authentication triggers
+- Chat and GUI prompt detection
+- Duplicate-attempt protection
+- Configurable randomized delay
+- Optional Master Password
+- Remembered device unlock
+- Thai and English prompt detection
+- F9 settings shortcut
+
+## Commands
 
 | Command | Description |
-| :--- | :--- |
-| `/alm gui` | Open the configuration screen |
-| `/alm trigger add <word>` | Add a custom keyword to trigger login |
-| `/alm trigger list` | See all active custom triggers |
-| `/alm set <password>` | Set a global password for all servers |
-| `/alm add <ip> <pass>` | Set a specific password for a server IP |
-| `/alm list` | View all saved server configurations |
+| --- | --- |
+| `/alm` or `/alm gui` | Open settings |
+| `/alm set <password>` | Set the global login password |
+| `/alm add <ip> <password>` | Store a password for one server |
+| `/alm remove <ip>` | Remove one server entry |
+| `/alm list` | Show stored configuration |
+| `/alm trigger add <word>` | Add a custom prompt trigger |
+| `/alm trigger remove <word>` | Remove a custom prompt trigger |
+| `/alm trigger list` | List custom prompt triggers |
 
-## ⚙️ How to Use
+## Upgrade note for 2.1.0
 
-1.  Press **F9** in-game to set your **Master Password**.
-2.  Use `/alm set <your_password>` for a global login.
-3.  Join any server and enjoy the magic!
+If you already used a Master Password before 2.1.0, Auto-Login cannot recover that password from its hash. Enter it **one final time** after upgrading; the mod will then remember the unlock on that device for future launches.
+
+Version 2.1.0 also fixes the F9 keybinding, respects the configured minimum/maximum delay, and avoids duplicate login sends from JOIN + chat/GUI detection.
 
 ---
-*Created with ❤️ by Cytech Team & namnarak*
+Created by CyoriaSMP Team / namnarak

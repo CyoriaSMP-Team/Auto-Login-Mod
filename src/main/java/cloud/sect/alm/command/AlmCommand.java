@@ -149,7 +149,8 @@ public class AlmCommand {
                         context.getSource().sendFeedback(Component.literal("§e/alm add <ip> <pass> §7- Per-server /login"));
                         context.getSource().sendFeedback(Component.literal("§e/alm trigger <add|remove|list> §7- Manage triggers"));
                         context.getSource().sendFeedback(Component.literal("§e/alm list §7- Show all settings"));
-                        context.getSource().sendFeedback(Component.literal("§6Hotkeys: §fF9 §7(Manual Login/GUI)"));
+                        context.getSource().sendFeedback(Component.literal("§6Hotkeys: §fF9 §7(Open Settings)"));
+                        context.getSource().sendFeedback(Component.literal("§7Master Password is optional; remembered unlock keeps Auto Login automatic."));
                         return 1;
                     })
                 );

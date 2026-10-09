@@ -1,4 +1,15 @@
-# 🛡️ Auto-Login Mod
+<!-- CYTECH_README_REFRESH:START -->
+<div align="center">
+<a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod"><img width="100%" alt="Auto-Login Mod banner" src="https://capsule-render.vercel.app/api?type=waving&color=0:122017,100:22C55E&height=210&section=header&text=Auto-Login%20Mod&fontSize=40&fontColor=ffffff&fontAlignY=36&desc=Prompt-aware%20Minecraft%20authentication%20helper&descAlignY=59&descSize=16"></a>
+
+<img alt="Project: Minecraft Mod" src="https://img.shields.io/badge/PROJECT-Minecraft%20Mod-22C55E?style=flat-square&labelColor=122017"> <img alt="Stack: Fabric · Java" src="https://img.shields.io/badge/STACK-Fabric%20%C2%B7%20Java-22C55E?style=flat-square&labelColor=122017">
+
+<a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod">Source</a> · <a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod/issues">Issues</a> · <a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod/releases">Releases</a>
+
+</div>
+<!-- CYTECH_README_REFRESH:END -->
+
+---
 
 A client-side Fabric utility that automatically authenticates you on Minecraft servers using `/login` or `/register`.
 

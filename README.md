@@ -2,6 +2,8 @@
 <div align="center">
 <a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod"><img width="100%" alt="Auto-Login Mod banner" src="https://capsule-render.vercel.app/api?type=waving&color=0:122017,100:22C55E&height=210&section=header&text=Auto-Login%20Mod&fontSize=40&fontColor=ffffff&fontAlignY=36&desc=Prompt-aware%20Minecraft%20authentication%20helper&descAlignY=59&descSize=16"></a>
 
+<p><img src="src/main/resources/assets/auto-login-mod/icon.png" alt="Auto-Login-Mod logo" width="136" /></p>
+
 <img alt="Project: Minecraft Mod" src="https://img.shields.io/badge/PROJECT-Minecraft%20Mod-22C55E?style=flat-square&labelColor=122017"> <img alt="Stack: Fabric · Java" src="https://img.shields.io/badge/STACK-Fabric%20%C2%B7%20Java-22C55E?style=flat-square&labelColor=122017">
 
 <a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod">Source</a> · <a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod/issues">Issues</a> · <a href="https://github.com/CyoriaSMP-Team/Auto-Login-Mod/releases">Releases</a>
@@ -69,3 +71,19 @@ Version 2.1.0 also fixes the F9 keybinding, respects the configured minimum/maxi
 
 ---
 Created by CyoriaSMP Team / namnarak
+
+---
+
+<!-- CYTECH_STAR_HISTORY:START -->
+
+## Star History
+
+<a href="https://star-history.dera.page/#CyoriaSMP-Team/Auto-Login-Mod&type=date&legend=top-left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=CyoriaSMP-Team/Auto-Login-Mod&type=date&legend=top-left&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=CyoriaSMP-Team/Auto-Login-Mod&type=date&legend=top-left" />
+    <img alt="GitHub star history for CyoriaSMP-Team/Auto-Login-Mod" src="https://star-history.dera.page/svg?repos=CyoriaSMP-Team/Auto-Login-Mod&type=date&legend=top-left" width="800" />
+  </picture>
+</a>
+
+<!-- CYTECH_STAR_HISTORY:END -->

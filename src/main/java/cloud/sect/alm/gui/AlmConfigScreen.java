@@ -259,9 +259,12 @@ public class AlmConfigScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta) {
-        super.renderBackground(context, mouseX, mouseY, delta);
-        context.fill(0, 0, this.width, this.height, 0xCC000000); 
-        context.fill(this.width / 2 - 155, 10, this.width / 2 + 155, this.height - 10, 0x22FFFFFF); 
+        // Minecraft 1.21.11 only allows one GUI blur per frame. FancyMenu and
+        // other screen renderers may already have applied it before we render.
+        // Draw this screen's backdrop directly instead of calling Screen's
+        // renderBackground(), which could try to apply a second blur and crash.
+        context.fill(0, 0, this.width, this.height, 0xCC000000);
+        context.fill(this.width / 2 - 155, 10, this.width / 2 + 155, this.height - 10, 0x22FFFFFF);
     }
 
     @Override

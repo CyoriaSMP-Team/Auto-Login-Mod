@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "auto-login-mod",
-	"version": "2.1.1",
+	"version": "2.1.2",
 	"name": "Auto Login Mod (Pro Edition)",
 	"description": "Client-side automatic authentication for servers using /login or /register, with prompt detection, per-server credentials, encrypted storage, and optional remembered device unlock.",
 	"authors": [

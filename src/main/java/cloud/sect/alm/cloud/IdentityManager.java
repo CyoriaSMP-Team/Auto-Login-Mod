@@ -16,13 +16,17 @@ public class IdentityManager {
         Minecraft mc = Minecraft.getInstance();
         User user = mc.getUser();
         
-        // เช็คผ่าน Session Type ของ Minecraft Native
-        // ถ้าเป็น User.Type.MS หรือ MOJANG คือไอดีแท้ที่ผ่านการ Auth
-        if (user.getType() == User.Type.MSA || user.getType() == User.Type.MOJANG) {
-            AutoLoginModClient.LOGGER.info("§6[ALM-Cloud] §aIdentity Verified via Microsoft/Mojang.");
+        // Minecraft 1.21.11 removed User.Type. An MSA XUID and nonempty
+        // access token indicate a Microsoft launcher session, but this is
+        // a client-side hint, NOT independent authentication verification.
+        if (user != null
+                && user.getXuid().filter(id -> !id.isBlank()).isPresent()
+                && user.getAccessToken() != null
+                && !user.getAccessToken().isBlank()) {
+            AutoLoginModClient.LOGGER.info("[ALM-Cloud] Microsoft session markers present.");
             return AccountStatus.VERIFIED_MOJANG;
         }
-        
+
         AutoLoginModClient.LOGGER.warn("§6[ALM-Cloud] §cUnverified Local Account detected. Cloud Sync Disabled.");
         return AccountStatus.LOCAL_ACCOUNT;
     }

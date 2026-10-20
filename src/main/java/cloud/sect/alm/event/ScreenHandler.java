@@ -56,7 +56,7 @@ public class ScreenHandler {
                         if (client.player != null) {
                             String cmd = isRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
                             client.player.connection.sendCommand(cmd);
-                            client.player.sendSystemMessage(
+                            client.gui.getChat().addMessage(
                                 Component.literal("§6[Auto-Login] §aDetected GUI and sent §e/" + (isRegister ? "register" : "login") + " §8(Delay: " + delay + "ms)")
                             );
                         }

@@ -66,7 +66,7 @@ public class ChatMessageHandler {
                         if (client.player != null) {
                             String cmd = finalIsRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
                             client.player.connection.sendCommand(cmd);
-                            client.player.sendSystemMessage(
+                            client.gui.getChat().addMessage(
                                 Component.literal("§6[Auto-Login] §aDetected and sent §e/" + (finalIsRegister ? "register" : "login") + " §8(Delay: " + delay + "ms)")
                             );
                         }

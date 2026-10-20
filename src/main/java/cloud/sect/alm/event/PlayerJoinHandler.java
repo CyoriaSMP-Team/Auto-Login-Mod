@@ -19,7 +19,7 @@ public class PlayerJoinHandler {
                 
                 // Greeting and Status Check
                 if (ServerConfig.isLocked()) {
-                    client.player.sendSystemMessage(
+                    client.gui.getChat().addMessage(
                         Component.literal(PREFIX + "§c§lDatabase Locked! §7Press §eF9 §7to enter Master Password.")
                     );
                     return;
@@ -27,16 +27,16 @@ public class PlayerJoinHandler {
 
                 if (entry != null) {
                     String type = entry.isRegisterCommand ? "§e/register" : "§e/login";
-                    client.player.sendSystemMessage(
+                    client.gui.getChat().addMessage(
                         Component.literal(PREFIX + "§7Active config: " + type + " §8(Per-Server)")
                     );
                 } else if (ServerConfig.hasGlobalPassword()) {
                     String type = ServerConfig.isGlobalRegisterMode() ? "§e/register" : "§e/login";
-                    client.player.sendSystemMessage(
+                    client.gui.getChat().addMessage(
                         Component.literal(PREFIX + "§7Active config: " + type + " §8(Global)")
                     );
                 } else {
-                    client.player.sendSystemMessage(
+                    client.gui.getChat().addMessage(
                         Component.literal(PREFIX + "§c§lNot Configured! §7Use §e/alm gui §7to set a password.")
                     );
                     return;
@@ -45,14 +45,14 @@ public class PlayerJoinHandler {
                 // Auto login is prompt-driven by default. This avoids racing the auth plugin
                 // and prevents JOIN + chat/GUI detectors from sending duplicate commands.
                 if (!ServerConfig.isAutoTypeEnabled()) {
-                    client.player.sendSystemMessage(
+                    client.gui.getChat().addMessage(
                         Component.literal(PREFIX + "§8Auto-login is disabled. Press §fF9 §8to open settings.")
                     );
                     return;
                 }
 
                 if (ServerConfig.isSmartModeEnabled()) {
-                    client.player.sendSystemMessage(
+                    client.gui.getChat().addMessage(
                         Component.literal(PREFIX + "§aReady. §7Waiting for the server login prompt...")
                     );
                     return;
@@ -75,7 +75,7 @@ public class PlayerJoinHandler {
                 if (!ServerConfig.beginAuthAttempt()) return;
 
                 final int delay = ServerConfig.getRandomDelay();
-                client.player.sendSystemMessage(
+                client.gui.getChat().addMessage(
                     Component.literal(PREFIX + "§aAuto-typing login in §e" + delay + "ms§a...")
                 );
                 
@@ -90,7 +90,7 @@ public class PlayerJoinHandler {
                                 if (client.player != null) {
                                     String cmd = finalIsRegister ? "register " + finalPassword + " " + finalPassword : "login " + finalPassword;
                                     client.player.connection.sendCommand(cmd);
-                                    client.player.sendSystemMessage(
+                                    client.gui.getChat().addMessage(
                                         Component.literal(PREFIX + "§aFallback auto-sent §e/" + (finalIsRegister ? "register" : "login"))
                                     );
                                 }

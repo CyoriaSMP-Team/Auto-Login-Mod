@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"id": "auto-login-mod",
-	"version": "2.1.0",
+	"version": "2.1.1",
 	"name": "Auto Login Mod (Pro Edition)",
 	"description": "Client-side automatic authentication for servers using /login or /register, with prompt detection, per-server credentials, encrypted storage, and optional remembered device unlock.",
 	"authors": [
@@ -25,8 +25,8 @@
 		]
 	},
 	"depends": {
-		"fabricloader": ">=0.16.0",
-		"minecraft": "*",
+		"fabricloader": ">=0.19.3",
+		"minecraft": "1.21.11",
 		"java": ">=21",
 		"fabric-api": "*"
 	}

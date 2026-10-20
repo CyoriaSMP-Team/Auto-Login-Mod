@@ -1,0 +1,115 @@
+name: Build & Release (Fabric)
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-login-mod-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
+jobs:
+  build:
+    name: Build Minecraft Fabric mod
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Install Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Verify tagged release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected="${GITHUB_REF_NAME#v}"
+          properties_version="$(sed -n 's/^mod_version=//p' gradle.properties)"
+          build_version="$(sed -n 's/^version = "\([^"]*\)".*/\1/p' build.gradle)"
+          metadata_version="$(python3 -c 'import json; print(json.load(open("src/main/resources/fabric.mod.json"))["version"])')"
+          for actual in "$properties_version" "$build_version" "$metadata_version"; do
+            if [[ "$actual" != "$expected" ]]; then
+              echo "::error::Git tag $GITHUB_REF_NAME does not match project version ($properties_version / $build_version / $metadata_version)"
+              exit 1
+            fi
+          done
+
+      - name: Build production JAR
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          ./gradlew --no-daemon clean build
+
+      - name: Collect remapped mod JAR and checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          find build/libs -maxdepth 1 -type f -name 'auto-login-mod-*.jar' \
+            ! -name '*-sources.jar' ! -name '*-dev.jar' -exec cp {} dist/ \;
+          count="$(find dist -maxdepth 1 -name '*.jar' | wc -l)"
+          if [[ "$count" -ne 1 ]]; then
+            echo "::error::Expected exactly one production JAR, found $count"
+            exit 1
+          fi
+          (cd dist && sha256sum ./*.jar > SHA256SUMS)
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: auto-login-mod-${{ github.run_id }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish snapshot prerelease on main
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="${GITHUB_SHA:0:12}"
+          tag="dev-$short_sha"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Snapshot $tag already exists; leaving it unchanged."
+          else
+            gh release create "$tag" dist/*.jar dist/SHA256SUMS \
+              --target "$GITHUB_SHA" \
+              --title "Development build $short_sha" \
+              --notes "Automatic test build from main at commit $GITHUB_SHA. Prerelease: not a stable version." \
+              --prerelease
+          fi
+
+      - name: Publish tagged stable release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "::error::Release $GITHUB_REF_NAME already exists; refusing to overwrite it."
+            exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" dist/*.jar dist/SHA256SUMS \
+            --verify-tag \
+            --title "Auto-Login Mod $GITHUB_REF_NAME" \
+            --generate-notes \
+            --latest
